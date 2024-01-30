@@ -4,22 +4,40 @@
 
 <body>
   <form method="POST">
-    <label for="package-name">The Exact name of your npm package</label>
-    <input type="text" id="package-name" name="package-name"/>
+    <div>
+      <label for="package-name">The exact name of your npm package
+        <input type="text" name="package-name"/>
+      </label>
+    </div>
+    <div>
+      <label for="package-version">The exact version of your npm package (optional) v
+        <input type="text" name="package-version"/>
+      </label>
+    </div>
     <button type="submit">Submit</button>
   </form>
 
   <div class="package-name">
     {#if form}
       <h2>{`${form.name}: `}</h2>
-      {#each Object.entries(form.versions) as [version, versionObject]}
-        <details>
-          <summary>{version}</summary>
-          {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
+      {#if !!form.versions}
+        {#each Object.entries(form.versions) as [version, versionObject]}
+          {#if !!versionObject.dependencies}
+            <details>
+              <summary>{version}</summary>
+              {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
+                <div>{dependency}: {depVersion}</div>
+              {/each}
+            </details>
+          {/if}
+        {/each}
+      {:else}
+        {#if !!form.dependencies}
+          {#each Object.entries(form.dependencies) as [dependency, depVersion]}
             <div>{dependency}: {depVersion}</div>
           {/each}
-        </details>
-      {/each}
+        {/if}
+      {/if}
     {/if}
   </div>
 </body>
