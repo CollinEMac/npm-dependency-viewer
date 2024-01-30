@@ -1,6 +1,11 @@
 <script lang="js">
+// @ts-nocheck
+
   export let form;
 
+  /**
+	 * @type {any}
+	 */
   let subDep;
 
   	/** 
