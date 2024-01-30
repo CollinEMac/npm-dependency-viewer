@@ -1,5 +1,20 @@
 <script lang="js">
   export let form;
+
+  let subDep;
+
+  	/** 
+     * @param {string} name
+     * @param {string} version
+     */
+	async function getSubDeps(name, version) {
+    version = version.substring(1); // Remove leading '^'
+
+    const response = await fetch(
+      `https://registry.npmjs.org/${name}/${version}`,
+    );
+    subDep = await response.json();
+	}
 </script>
 
 <body>
@@ -10,7 +25,7 @@
       </label>
     </div>
     <div>
-      <label for="package-version">The exact version of your npm package (optional) v
+      <label for="package-version">The exact version of your npm package (optional)
         <input type="text" name="package-version"/>
       </label>
     </div>
@@ -26,7 +41,23 @@
             <details>
               <summary>{version}</summary>
               {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
-                <div>{dependency}: {depVersion}</div>
+                <h3>
+                  {dependency}: {depVersion} 
+                  <button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</button>
+                </h3>
+                {#if !!subDep}
+                  {#await subDep}
+                    ...
+                  {:then subDep}
+                    {#if !!subDep.dependencies}
+                      {#each Object.entries(subDep.dependencies) as [subDependency, subDepVersion]}
+                        <h4>{subDependency}: {subDepVersion}</h4>
+                      {/each}
+                    {/if}
+                  {:catch error}
+                    <p style="color: red">{error.message}</p>
+                  {/await}
+                {/if} 
               {/each}
             </details>
           {/if}
