@@ -2,7 +2,7 @@
 // @ts-nocheck
 
   export let form;
-  export let history;
+  export let history = [];
 
   	/** 
      * @param {string} name
@@ -12,17 +12,33 @@
     version = version.substring(1); // Remove leading '^'
 
     // Update history
-    if (history) {
-      history = history + " -> " + name + " @ " + version;
-    } else {
-      history = form.name + " -> " + name + " @ " + version;
+    if (history.length == 0) {
+      if ("version" in form) {
+        history.push(form.name + " @ " + form.version);
+      } else {
+        history.push(form.name);
+      }
     }
+    history.push(name + " @ " + version);
 
     const response = await fetch(
       `https://registry.npmjs.org/${name}/${version}`,
     );
     form = await response.json();
 	}
+
+  	/** 
+     * @param {string} name
+     */
+  async function getParentDep(name) {
+    name = name.split(" @ ")[0];
+    history=[];
+
+    const response = await fetch(
+      `https://registry.npmjs.org/${name}`,
+    )
+    form = await response.json();
+  }
 </script>
 
 <body>
@@ -42,8 +58,11 @@
 
   <div class="package-name">
     {#if form}
-      {#if !!history}
-        <h2>{history}</h2>
+      {#if history.length > 0}
+        {#each history as historyItem, index}
+          <button on:click={getParentDep(historyItem)}><h2>{historyItem}</h2></button>
+          { index == history.length-1 ? '' : ' -> ' }
+        {/each}
       {:else}
         {#if form.version}
           <h2>{`${form.name} @ ${form.version}: `}</h2>
