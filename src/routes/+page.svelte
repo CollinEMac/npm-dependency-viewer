@@ -29,12 +29,12 @@
   <form method="POST">
     <div>
       <label for="package-name">The exact name of your npm package
-        <input type="text" name="package-name"/>
+        <input type="text" name="package-name" value={form?.name ?? ""}/>
       </label>
     </div>
     <div>
       <label for="package-version">The exact version of your npm package (optional)
-        <input type="text" name="package-version"/>
+        <input type="text" name="package-version" value={form?.version ?? ""}/>
       </label>
     </div>
     <button type="submit">Submit</button>
