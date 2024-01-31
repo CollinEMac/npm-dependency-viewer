@@ -61,7 +61,11 @@
       {#if history.length > 0}
         {#each history as historyItem, index}
           <button on:click={getParentDep(historyItem)}><h2>{historyItem}</h2></button>
-          { index == history.length-1 ? '' : ' -> ' }
+          {#if index == history.length-1}
+            <br>
+          {:else}
+            ->
+          {/if}
         {/each}
       {:else}
         {#if form.version}
