@@ -40,18 +40,16 @@
     <button type="submit">Submit</button>
   </form>
 
-  <div class="history">
-    {#if history}
-      {history}
-    {/if}
-  </div>
-
   <div class="package-name">
     {#if form}
-      {#if form.version}
-        <h2>{`${form.name} @ ${form.version}: `}</h2>
+      {#if !!history}
+        <h2>{history}</h2>
       {:else}
-        <h2>{`${form.name}: `}</h2>
+        {#if form.version}
+          <h2>{`${form.name} @ ${form.version}: `}</h2>
+        {:else}
+          <h2>{`${form.name}: `}</h2>
+        {/if}
       {/if}
       {#if !!form.versions}
         {#each Object.entries(form.versions) as [version, versionObject]}
@@ -59,10 +57,10 @@
             <summary>{version}</summary>
             {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length !== 0}
               {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
-                <h3>
-                  {dependency}: {depVersion} 
+                <div>
+                  {dependency}: {depVersion}
                   <button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</button>
-                </h3>
+                </div>
               {/each}
             {:else}
               No dependencies
@@ -84,3 +82,13 @@
     {/if}
   </div>
 </body>
+
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+  }
+</style>
