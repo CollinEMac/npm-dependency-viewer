@@ -2,7 +2,7 @@
 // @ts-nocheck
 
   export let form;
-  export let history = [];
+  $: history = [];
 
   	/** 
      * @param {string} name
@@ -20,6 +20,7 @@
       }
     }
     history.push(name + " @ " + version);
+    history = history;
 
     const response = await fetch(
       `https://registry.npmjs.org/${name}/${version}`,
