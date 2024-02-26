@@ -54,7 +54,9 @@
         <input type="text" name="package-version" value={form?.version ?? ""}/>
       </label>
     </div>
-    <button type="submit">Submit</button>
+    <div>
+      <button type="submit">Submit</button>
+    </div>
   </form>
 
   <div class="package-name">
@@ -113,6 +115,11 @@
     text-align: center;
     margin: 0;
     padding: 0;
+    padding-top: 0.75em;
     background-color: #f5f5f5;
+  }
+
+  div {
+    padding-top: 0.75em;
   }
 </style>
