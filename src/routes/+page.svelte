@@ -50,9 +50,16 @@
       </label>
     </div>
     <div>
+      {#if form?.versions}
       <label for="package-version">The exact version of your npm package (optional)
-        <input type="text" name="package-version" value={form?.version ?? ""}/>
+        <select name="package-version" value={form?.version ?? ""}>
+          <option value="">--Please choose an option--</option>
+          {#each Object.entries(form.versions) as [version, versionObject]}
+            <option value={version}>{version}</option>
+          {/each}
+        </select>
       </label>
+      {/if}
     </div>
     <div>
       <button type="submit">Submit</button>
