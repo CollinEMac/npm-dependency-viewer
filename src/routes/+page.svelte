@@ -62,7 +62,7 @@
     </div>
     <div class="pt-3">
       {#if form?.versions}
-      <Select.Root class="bg-slate-50">
+      <Select.Root>
         <Select.Trigger class="w-[180px] bg-slate-50">
           <Select.Value placeholder="Select a version" />
         </Select.Trigger>
@@ -85,7 +85,7 @@
     </div>
   </form>
 
-  <div class="package-name pt-3">
+  <div class="pt-3">
     {#if form}
       {#if history.length > 0}
         {#each history as historyItem, index}
