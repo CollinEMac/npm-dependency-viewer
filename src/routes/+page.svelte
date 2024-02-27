@@ -1,6 +1,11 @@
 <script lang="js">
 // @ts-nocheck
 
+  import { Button } from "$lib/components/ui/button";
+  import * as Collapsible from "$lib/components/ui/collapsible";
+  import { Input } from "$lib/components/ui/input";
+  import * as Select from "$lib/components/ui/select";
+
   export let form;
   $: history = [];
 
@@ -42,35 +47,47 @@
   }
 </script>
 
-<body>
+<body class="flex flex-col justify-center items-center text-center pt-3 bg-slate-200 overflow-y-scroll">
   <form method="POST">
     <div>
-      <label for="package-name">The exact name of your npm package
-        <input type="text" name="package-name" value={form?.name ?? ""}/>
-      </label>
+      <Input
+        class="text-center bg-slate-50 w-[180px]"
+        type="text"
+        name="package-name"
+        value={form?.name ?? ""}
+        placeholder="package name"
+      />
     </div>
-    <div>
+    <div class="pt-3">
       {#if form?.versions}
-      <label for="package-version">The exact version of your npm package (optional)
-        <select name="package-version" value={form?.version ?? ""}>
-          <option value="">--Please choose an option--</option>
-          {#each Object.entries(form.versions) as [version, versionObject]}
-            <option value={version}>{version}</option>
-          {/each}
-        </select>
-      </label>
+      <Select.Root class="bg-slate-50">
+        <Select.Trigger class="w-[180px] bg-slate-50">
+          <Select.Value placeholder="Select a version" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Group>
+            <Select.Label for="package-version">The exact version of your npm package (optional)</Select.Label>
+            {#each Object.entries(form.versions) as [version, versionObject]}
+              <Select.Item name="package-version" value={version} label={version}
+                >{version}</Select.Item
+              >
+            {/each}
+          </Select.Group>
+        </Select.Content>
+        <Select.Input name="package-version" />
+      </Select.Root>
       {/if}
     </div>
-    <div>
-      <button type="submit">Submit</button>
+    <div class="pt-3">
+      <Button type="submit" >Submit</Button>
     </div>
   </form>
 
-  <div class="package-name">
+  <div class="package-name pt-3">
     {#if form}
       {#if history.length > 0}
         {#each history as historyItem, index}
-          <button on:click={getParentDep(historyItem)}><h2>{historyItem}</h2></button>
+          <Button on:click={getParentDep(historyItem)}><h2>{historyItem}</h2></Button>
           {#if index == history.length-1}
             <br>
           {:else}
@@ -86,26 +103,33 @@
       {/if}
       {#if !!form.versions}
         {#each Object.entries(form.versions) as [version, versionObject]}
-          <details>
-            <summary>{version}</summary>
+          <Collapsible.Root class="w-[350px] space-y-2 pt-3">
+            <div class="flex items-center justify-between space-x-4 px-4">
+              <h4 class="text-sm font-semibold">{version}</h4>
+              <Collapsible.Trigger asChild let:builder>
+                <Button builders={[builder]} variant="ghost" size="sm" class="w-9 p-0">
+                  ↕
+                </Button>
+              </Collapsible.Trigger>
+            </div>
             {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length !== 0}
               {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
-                <div>
-                  {dependency}: {depVersion}
-                  <button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</button>
-                </div>
+                <Collapsible.Content class="space-y-2">
+                  <div>
+                    {dependency}: {depVersion}
+                    <Button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</Button>
+                  </div>
+                </Collapsible.Content>
               {/each}
-            {:else}
-              No dependencies
             {/if}
-          </details>
+          </Collapsible.Root>
         {/each}
       {:else}
         {#if form.dependencies && Object.keys(form.dependencies).length !== 0}
           {#each Object.entries(form.dependencies) as [dependency, depVersion]}
             <div>
               {dependency}: {depVersion}
-              <button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</button>
+              <Button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</Button>
             </div>
           {/each}
         {:else}
@@ -115,18 +139,3 @@
     {/if}
   </div>
 </body>
-
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    text-align: center;
-    margin: 0;
-    padding: 0;
-    padding-top: 0.75em;
-    background-color: #f5f5f5;
-  }
-
-  div {
-    padding-top: 0.75em;
-  }
-</style>
