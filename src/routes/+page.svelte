@@ -6,6 +6,8 @@
   import { Input } from "$lib/components/ui/input";
   import * as Select from "$lib/components/ui/select";
 
+  import { enhance } from '$app/forms';
+
   export let form;
   $: history = [];
 
@@ -48,7 +50,7 @@
 </script>
 
 <body class="flex flex-col justify-center items-center text-center pt-3 bg-slate-200 overflow-y-scroll">
-  <form method="POST">
+  <form method="POST" use:enhance>
     <div>
       <Input
         class="text-center bg-slate-50 w-[180px]"
@@ -106,11 +108,15 @@
           <Collapsible.Root class="w-[350px] space-y-2 pt-3">
             <div class="flex items-center justify-between space-x-4 px-4">
               <h4 class="text-sm font-semibold">{version}</h4>
-              <Collapsible.Trigger asChild let:builder>
-                <Button builders={[builder]} variant="ghost" size="sm" class="w-9 p-0">
-                  ↕
-                </Button>
-              </Collapsible.Trigger>
+              {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length !== 0}
+                <Collapsible.Trigger asChild let:builder>
+                  <Button builders={[builder]} variant="outline" size="lg" class="w-9 p-0">
+                    ↕
+                  </Button>
+                </Collapsible.Trigger>
+              {:else}
+                <span class="opacity-50">No subdependencies</span>
+              {/if}
             </div>
             {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length !== 0}
               {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
