@@ -1,5 +1,8 @@
 <script>
 	import '../app.pcss';
+	import { browser } from '$app/environment';
 </script>
 
-<slot />
+{#if browser}
+	<slot />
+{/if}
