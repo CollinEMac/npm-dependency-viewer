@@ -49,7 +49,7 @@
   }
 </script>
 
-<body class="flex flex-col justify-center items-center text-center pt-3 bg-slate-200 overflow-y-scroll">
+<body class="flex flex-col justify-center items-center text-center pt-3 bg-slate-200">
   <form method="POST" use:enhance>
     <div>
       <Input
@@ -66,7 +66,7 @@
         <Select.Trigger class="w-[180px] bg-slate-50">
           <Select.Value placeholder="Select a version" />
         </Select.Trigger>
-        <Select.Content>
+        <Select.Content class="overflow-y-auto max-h-[300px]">
           <Select.Group>
             <Select.Label for="package-version">The exact version of your npm package (optional)</Select.Label>
             {#each Object.entries(form.versions) as [version, versionObject]}
@@ -128,7 +128,7 @@
             </div>
             {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length !== 0}
               {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
-                <Collapsible.Content class="space-y-2">
+                <Collapsible.Content class="space-y-2 pt-2">
                   <div>
                     {dependency}: {depVersion}
                     <Button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</Button>
@@ -141,7 +141,7 @@
       {:else}
         {#if form.dependencies && Object.keys(form.dependencies).length !== 0}
           {#each Object.entries(form.dependencies) as [dependency, depVersion]}
-            <div>
+            <div class="pt-2">
               {dependency}: {depVersion}
               <Button on:click={getSubDeps(dependency, depVersion)}> Get Sub Dependencies</Button>
             </div>
