@@ -81,7 +81,7 @@
       {/if}
     </div>
     <div class="pt-3">
-      <Button type="submit" >Submit</Button>
+      <Button type="submit">Submit</Button>
     </div>
   </form>
 
@@ -97,10 +97,18 @@
           {/if}
         {/each}
       {:else}
-        {#if form.version}
-          <h2>{`${form.name} @ ${form.version}: `}</h2>
+        {#if form.name}
+          {#if form.version}
+            <h1 class="text-xl">{`${form.name} @ ${form.version}: `}</h1>
+          {:else}
+            <h1 class="text-xl">{`${form.name}: `}</h1>
+          {/if}
         {:else}
-          <h2>{`${form.name}: `}</h2>
+          <h1 class="text-xl">Couldn't find that package...</h1>
+          <h3 class="pt-3">Try looking at available packages at <a
+            class="no-underline hover:underline text-sky-600" target="#" href="https://www.npmjs.com"
+            >https://www.npmjs.com</a>
+          </h3>
         {/if}
       {/if}
       {#if !!form.versions}
@@ -139,7 +147,7 @@
             </div>
           {/each}
         {:else}
-          No dependencies
+          <h3 class="pt-3">No dependencies...</h3>
         {/if}
       {/if}
     {/if}
