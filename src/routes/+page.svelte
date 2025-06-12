@@ -403,7 +403,8 @@ function countDependencies(deps) {
                   
                   <div class="flex items-center gap-1">
                     {#each Array(Math.min(5, totalPages)) as _, i}
-                      {@const pageNum = Math.max(1, Math.min(totalPages, currentPage - 2 + i))}
+                      {@const startPage = Math.max(1, Math.min(totalPages - 4, currentPage - 2))}
+                      {@const pageNum = startPage + i}
                       <Button 
                         variant={pageNum === currentPage ? "default" : "outline"}
                         size="sm"
