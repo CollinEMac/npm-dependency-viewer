@@ -8,4 +8,4 @@ https://npm-dependency-viewer.fly.dev/
 
 ## Check it out locally with
 
-`npm start dev`
+`npm run dev`
