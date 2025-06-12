@@ -14,6 +14,9 @@ let selectedVersion = null;
 let currentPage = 1;
 let versionsPerPage = 10;
 
+// Cache to store package data and avoid repeat API calls
+let packageCache = new Map();
+
 // Handle form submission result
 $: if (form) {
   if (form.error) {
@@ -52,69 +55,16 @@ async function getSubDeps(name, version) {
     history.push(`${name} @ ${version}`);
     history = [...history];
 
-    // First, get the package manifest to resolve the version
-    const manifestResponse = await fetch(`https://registry.npmjs.org/${name}`);
+    // Get package manifest (cached)
+    const manifest = await fetchPackageData(name);
     
-    if (!manifestResponse.ok) {
-      throw new Error(`Failed to fetch ${name}: ${manifestResponse.status}`);
-    }
-    
-    const manifest = await manifestResponse.json();
-    
-    // Try to find the best matching version
-    let resolvedVersion = version;
-    
-    // Handle version ranges and patterns
-    if (version === '*') {
-      // "*" means any version, use latest
-      if (manifest['dist-tags'] && manifest['dist-tags'].latest) {
-        resolvedVersion = manifest['dist-tags'].latest;
-      } else {
-        const availableVersions = Object.keys(manifest.versions);
-        if (availableVersions.length > 0) {
-          resolvedVersion = availableVersions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
-        }
-      }
-    } else if (version.includes('.x')) {
-      // Handle patterns like "2.x", "1.2.x"
-      const pattern = version.replace(/\.x/g, '');
-      const availableVersions = Object.keys(manifest.versions);
-      const matchingVersions = availableVersions.filter(v => v.startsWith(pattern + '.'));
-      if (matchingVersions.length > 0) {
-        // Get the latest matching version
-        resolvedVersion = matchingVersions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
-      }
-    } else if (version.startsWith('^') || version.startsWith('~')) {
-      // For semver ranges, try to get the latest version or use dist-tags
-      if (manifest['dist-tags'] && manifest['dist-tags'].latest) {
-        resolvedVersion = manifest['dist-tags'].latest;
-      } else {
-        // Remove the range prefix and try that version
-        resolvedVersion = version.replace(/^[\^~]/, '');
-      }
-    }
-    
-    // If we still have an invalid version, try to get a specific version
-    if (!manifest.versions[resolvedVersion]) {
-      if (manifest['dist-tags'] && manifest['dist-tags'].latest) {
-        resolvedVersion = manifest['dist-tags'].latest;
-      } else {
-        // Get the latest available version
-        const availableVersions = Object.keys(manifest.versions);
-        if (availableVersions.length > 0) {
-          resolvedVersion = availableVersions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
-        }
-      }
-    }
+    // Resolve version range to specific version
+    const resolvedVersion = resolveVersion(version, manifest);
 
-    // Now fetch the specific version data
-    const versionResponse = await fetch(`https://registry.npmjs.org/${name}/${resolvedVersion}`);
+    // Get specific version data (cached)
+    const versionData = await fetchPackageData(name, resolvedVersion);
     
-    if (!versionResponse.ok) {
-      throw new Error(`Failed to fetch ${name}@${resolvedVersion}: ${versionResponse.status}`);
-    }
-    
-    form = await versionResponse.json();
+    form = versionData;
   } catch (err) {
     error = err.message;
     console.error('Error fetching subdependencies:', err);
@@ -139,13 +89,9 @@ async function navigateToHistoryItem(historyItem) {
     // Trim history to the selected item
     history = history.slice(0, currentIndex + 1);
     
-    const response = await fetch(`https://registry.npmjs.org/${name}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${name}: ${response.status}`);
-    }
-    
-    form = await response.json();
+    // Use cached data if available
+    const data = await fetchPackageData(name);
+    form = data;
   } catch (err) {
     error = err.message;
     console.error('Error navigating to history item:', err);
@@ -177,13 +123,8 @@ async function selectVersion(version) {
   selectedVersion = version;
   
   try {
-    const response = await fetch(`https://registry.npmjs.org/${form.name}/${version}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${form.name}@${version}: ${response.status}`);
-    }
-    
-    const versionData = await response.json();
+    // Use cached data if available
+    const versionData = await fetchPackageData(form.name, version);
     form = { ...form, ...versionData, selectedVersion: version };
   } catch (err) {
     error = err.message;
@@ -204,14 +145,9 @@ async function searchPackage() {
   history = [];
   
   try {
-    const response = await fetch(`https://registry.npmjs.org/${packageName.trim()}`);
-    
-    if (!response.ok) {
-      throw new Error(`Package "${packageName}" not found`);
-    }
-    
-    searchResults = await response.json();
-    form = searchResults;
+    const data = await fetchPackageData(packageName.trim());
+    searchResults = data;
+    form = data;
   } catch (err) {
     error = err.message;
     searchResults = null;
@@ -227,6 +163,76 @@ async function searchPackage() {
  */
 function countDependencies(deps) {
   return deps ? Object.keys(deps).length : 0;
+}
+
+/**
+ * Fetch package data with caching
+ * @param {string} name
+ * @param {string} version - optional specific version
+ */
+async function fetchPackageData(name, version = null) {
+  const cacheKey = version ? `${name}@${version}` : name;
+  
+  if (packageCache.has(cacheKey)) {
+    return packageCache.get(cacheKey);
+  }
+  
+  const url = version 
+    ? `https://registry.npmjs.org/${name}/${version}`
+    : `https://registry.npmjs.org/${name}`;
+    
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${cacheKey}: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  packageCache.set(cacheKey, data);
+  return data;
+}
+
+/**
+ * Resolve version ranges to specific versions
+ * @param {string} version
+ * @param {Object} manifest
+ */
+function resolveVersion(version, manifest) {
+  if (version === '*') {
+    // "*" means any version, use latest
+    return manifest['dist-tags']?.latest || 
+           Object.keys(manifest.versions).sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
+  }
+  
+  if (version.includes('.x')) {
+    // Handle patterns like "2.x", "1.2.x"
+    const pattern = version.replace(/\.x/g, '');
+    const availableVersions = Object.keys(manifest.versions);
+    const matchingVersions = availableVersions.filter(v => v.startsWith(pattern + '.'));
+    if (matchingVersions.length > 0) {
+      return matchingVersions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
+    }
+  }
+  
+  if (version.startsWith('^') || version.startsWith('~')) {
+    // For simple ranges, try the base version first
+    const baseVersion = version.replace(/^[\^~]/, '');
+    if (manifest.versions[baseVersion]) {
+      return baseVersion;
+    }
+    // Fall back to latest
+    return manifest['dist-tags']?.latest || 
+           Object.keys(manifest.versions).sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
+  }
+  
+  // If exact version exists, use it
+  if (manifest.versions[version]) {
+    return version;
+  }
+  
+  // Fall back to latest
+  return manifest['dist-tags']?.latest || 
+         Object.keys(manifest.versions).sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
 }
 </script>
 
