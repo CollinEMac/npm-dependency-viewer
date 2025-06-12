@@ -5,12 +5,43 @@ import { Button } from "$lib/components/ui/button";
 import * as Collapsible from "$lib/components/ui/collapsible";
 import { Input } from "$lib/components/ui/input";
 import * as Select from "$lib/components/ui/select";
+import { enhance } from "$app/forms";
 export let form;
 
 let history = [];
 let loading = false;
 let error = null;
 let selectedVersion = null;
+let currentPage = 1;
+let versionsPerPage = 10;
+let versionFilter = '';
+
+// Handle form submission result
+$: if (form) {
+  if (form.error) {
+    error = form.error;
+  } else if (form.success !== false) {
+    error = null;
+  }
+}
+
+// Filter and paginate versions
+$: filteredVersions = form?.versions 
+  ? Object.entries(form.versions).filter(([version]) => 
+      version.toLowerCase().includes((versionFilter || '').toLowerCase())
+    )
+  : [];
+
+$: totalPages = Math.ceil(filteredVersions.length / versionsPerPage);
+
+$: paginatedVersions = filteredVersions.slice(
+  (currentPage - 1) * versionsPerPage, 
+  currentPage * versionsPerPage
+);
+
+$: if (versionFilter) {
+  currentPage = 1; // Reset to first page when filtering
+}
 let packageName = '';
 let searchResults = null;
 
@@ -82,16 +113,6 @@ async function navigateToHistoryItem(historyItem) {
 }
 
 /**
- * Reset to search a new package
- */
-function resetSearch() {
-  history = [];
-  error = null;
-  selectedVersion = null;
-  form = null;
-}
-
-/**
  * Handle version selection
  * @param {string} version
  */
@@ -117,6 +138,18 @@ async function selectVersion(version) {
   } finally {
     loading = false;
   }
+}
+
+/**
+ * Reset to search a new package
+ */
+function resetSearch() {
+  history = [];
+  error = null;
+  selectedVersion = null;
+  currentPage = 1;
+  versionFilter = '';
+  form = null;
 }
 
 /**
@@ -160,7 +193,7 @@ function countDependencies(deps) {
   <div class="w-full max-w-4xl px-4">
     <!-- Header -->
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-slate-800 mb-2">NPM Dependency Explorer</h1>
+      <h1 class="text-3xl font-bold text-slate-800 mb-2">NPM Dependency Viewer</h1>
       <p class="text-slate-600">Explore package dependencies and their versions</p>
     </div>
 
@@ -222,13 +255,23 @@ function countDependencies(deps) {
           <Button type="submit" disabled={loading}>
             {loading ? 'Loading...' : 'Search'}
           </Button>
-          {#if form}
-            <Button type="button" variant="outline" on:click={resetSearch} disabled={loading}>
-              New Search
-            </Button>
-          {/if}
         </div>
       </form>
+      
+      {#if form && !form.error}
+        <div class="flex justify-center mt-4 pt-4 border-t border-slate-200">
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm"
+            on:click={resetSearch} 
+            disabled={loading}
+            class="text-slate-600 hover:text-slate-800"
+          >
+            🔄 Start New Search
+          </Button>
+        </div>
+      {/if}
     </div>
 
     <!-- Loading State -->
@@ -307,56 +350,112 @@ function countDependencies(deps) {
           {#if form.versions}
             <!-- Multiple versions view -->
             <div class="space-y-4">
-              <h3 class="text-lg font-semibold text-slate-800">Versions & Dependencies</h3>
-              {#each Object.entries(form.versions).slice(0, 10) as [version, versionObject]}
-                <Collapsible.Root class="border border-slate-200 rounded-lg">
-                  <div class="flex items-center justify-between p-4 bg-slate-50">
-                    <div class="flex items-center gap-3">
-                      <h4 class="font-medium text-slate-800">{version}</h4>
-                      <span class="text-xs bg-slate-200 text-slate-700 px-2 py-1 rounded">
-                        {countDependencies(versionObject.dependencies)} deps
-                      </span>
+              <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-800">Versions & Dependencies</h3>
+                <div class="flex items-center gap-3">
+                  <Input
+                    class="w-48 h-8 text-sm"
+                    type="text"
+                    bind:value={versionFilter}
+                    placeholder="Filter versions..."
+                  />
+                  <span class="text-sm text-slate-500">
+                    {filteredVersions.length} of {Object.keys(form.versions).length} versions
+                  </span>
+                </div>
+              </div>
+              
+              {#if filteredVersions.length === 0}
+                <div class="text-center py-8">
+                  <p class="text-slate-500">No versions match your filter.</p>
+                </div>
+              {:else}
+                {#each paginatedVersions as [version, versionObject]}
+                  <Collapsible.Root class="border border-slate-200 rounded-lg">
+                    <div class="flex items-center justify-between p-4 bg-slate-50">
+                      <div class="flex items-center gap-3">
+                        <h4 class="font-medium text-slate-800">{version}</h4>
+                        <span class="text-xs bg-slate-200 text-slate-700 px-2 py-1 rounded">
+                          {countDependencies(versionObject.dependencies)} deps
+                        </span>
+                      </div>
+                      {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length > 0}
+                        <Collapsible.Trigger asChild let:builder>
+                          <Button builders={[builder]} variant="outline" size="sm">
+                            View Dependencies
+                          </Button>
+                        </Collapsible.Trigger>
+                      {:else}
+                        <span class="text-slate-500 text-sm">No dependencies</span>
+                      {/if}
                     </div>
+                    
                     {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length > 0}
-                      <Collapsible.Trigger asChild let:builder>
-                        <Button builders={[builder]} variant="outline" size="sm">
-                          View Dependencies
-                        </Button>
-                      </Collapsible.Trigger>
-                    {:else}
-                      <span class="text-slate-500 text-sm">No dependencies</span>
+                      <Collapsible.Content class="p-4 pt-0">
+                        <div class="grid gap-2">
+                          {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
+                            <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded">
+                              <div class="flex flex-col">
+                                <span class="font-medium text-slate-800">{dependency}</span>
+                                <span class="text-xs text-slate-500">{depVersion}</span>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                on:click={() => getSubDeps(dependency, depVersion)}
+                                disabled={loading}
+                              >
+                                Explore →
+                              </Button>
+                            </div>
+                          {/each}
+                        </div>
+                      </Collapsible.Content>
                     {/if}
+                  </Collapsible.Root>
+                {/each}
+                
+                <!-- Pagination Controls -->
+                {#if totalPages > 1}
+                  <div class="flex items-center justify-center gap-2 mt-6">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={currentPage === 1}
+                      on:click={() => currentPage = Math.max(1, currentPage - 1)}
+                    >
+                      ← Previous
+                    </Button>
+                    
+                    <div class="flex items-center gap-1">
+                      {#each Array(Math.min(5, totalPages)) as _, i}
+                        {@const pageNum = Math.max(1, Math.min(totalPages, currentPage - 2 + i))}
+                        <Button 
+                          variant={pageNum === currentPage ? "default" : "outline"}
+                          size="sm"
+                          class="w-8 h-8 p-0"
+                          on:click={() => currentPage = pageNum}
+                        >
+                          {pageNum}
+                        </Button>
+                      {/each}
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      on:click={() => currentPage = Math.min(totalPages, currentPage + 1)}
+                    >
+                      Next →
+                    </Button>
                   </div>
                   
-                  {#if versionObject.dependencies && Object.keys(versionObject.dependencies).length > 0}
-                    <Collapsible.Content class="p-4 pt-0">
-                      <div class="grid gap-2">
-                        {#each Object.entries(versionObject.dependencies) as [dependency, depVersion]}
-                          <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded">
-                            <div class="flex flex-col">
-                              <span class="font-medium text-slate-800">{dependency}</span>
-                              <span class="text-xs text-slate-500">{depVersion}</span>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              on:click={() => getSubDeps(dependency, depVersion)}
-                              disabled={loading}
-                            >
-                              Explore →
-                            </Button>
-                          </div>
-                        {/each}
-                      </div>
-                    </Collapsible.Content>
-                  {/if}
-                </Collapsible.Root>
-              {/each}
-              
-              {#if Object.keys(form.versions).length > 10}
-                <p class="text-center text-slate-500 text-sm">
-                  Showing 10 of {Object.keys(form.versions).length} versions
-                </p>
+                  <div class="text-center text-sm text-slate-500 mt-2">
+                    Page {currentPage} of {totalPages} 
+                    ({versionsPerPage} versions per page)
+                  </div>
+                {/if}
               {/if}
             </div>
           {:else if form.dependencies && Object.keys(form.dependencies).length > 0}
