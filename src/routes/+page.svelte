@@ -44,23 +44,77 @@ async function getSubDeps(name, version) {
   error = null;
   
   try {
-    const cleanVersion = version.replace(/^[\^~]/, ''); // Remove leading ^ or ~
-    
-    // Update history
+    // Update history first
     if (history.length === 0) {
       const rootEntry = form?.version ? `${form.name} @ ${form.version}` : form.name;
       history.push(rootEntry);
     }
-    history.push(`${name} @ ${cleanVersion}`);
+    history.push(`${name} @ ${version}`);
     history = [...history];
 
-    const response = await fetch(`https://registry.npmjs.org/${name}/${cleanVersion}`);
+    // First, get the package manifest to resolve the version
+    const manifestResponse = await fetch(`https://registry.npmjs.org/${name}`);
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${name}@${cleanVersion}: ${response.status}`);
+    if (!manifestResponse.ok) {
+      throw new Error(`Failed to fetch ${name}: ${manifestResponse.status}`);
     }
     
-    form = await response.json();
+    const manifest = await manifestResponse.json();
+    
+    // Try to find the best matching version
+    let resolvedVersion = version;
+    
+    // Handle version ranges and patterns
+    if (version === '*') {
+      // "*" means any version, use latest
+      if (manifest['dist-tags'] && manifest['dist-tags'].latest) {
+        resolvedVersion = manifest['dist-tags'].latest;
+      } else {
+        const availableVersions = Object.keys(manifest.versions);
+        if (availableVersions.length > 0) {
+          resolvedVersion = availableVersions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
+        }
+      }
+    } else if (version.includes('.x')) {
+      // Handle patterns like "2.x", "1.2.x"
+      const pattern = version.replace(/\.x/g, '');
+      const availableVersions = Object.keys(manifest.versions);
+      const matchingVersions = availableVersions.filter(v => v.startsWith(pattern + '.'));
+      if (matchingVersions.length > 0) {
+        // Get the latest matching version
+        resolvedVersion = matchingVersions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
+      }
+    } else if (version.startsWith('^') || version.startsWith('~')) {
+      // For semver ranges, try to get the latest version or use dist-tags
+      if (manifest['dist-tags'] && manifest['dist-tags'].latest) {
+        resolvedVersion = manifest['dist-tags'].latest;
+      } else {
+        // Remove the range prefix and try that version
+        resolvedVersion = version.replace(/^[\^~]/, '');
+      }
+    }
+    
+    // If we still have an invalid version, try to get a specific version
+    if (!manifest.versions[resolvedVersion]) {
+      if (manifest['dist-tags'] && manifest['dist-tags'].latest) {
+        resolvedVersion = manifest['dist-tags'].latest;
+      } else {
+        // Get the latest available version
+        const availableVersions = Object.keys(manifest.versions);
+        if (availableVersions.length > 0) {
+          resolvedVersion = availableVersions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}))[0];
+        }
+      }
+    }
+
+    // Now fetch the specific version data
+    const versionResponse = await fetch(`https://registry.npmjs.org/${name}/${resolvedVersion}`);
+    
+    if (!versionResponse.ok) {
+      throw new Error(`Failed to fetch ${name}@${resolvedVersion}: ${versionResponse.status}`);
+    }
+    
+    form = await versionResponse.json();
   } catch (err) {
     error = err.message;
     console.error('Error fetching subdependencies:', err);
